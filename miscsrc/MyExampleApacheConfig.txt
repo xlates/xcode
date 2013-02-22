@@ -1,0 +1,18 @@
+<VirtualHost *:80>
+       ProxyRequests off
+
+       ServerName myservice.foo.com
+       ErrorLog logs/myservice-error_log
+       CustomLog logs/myservice-access_log common
+
+       <Proxy balancer://my_load_balancer>
+
+            BalancerMember http://10.170.0.1:9998
+            BalancerMember http://10.170.0.2:9999
+
+            ProxySet lbmethod=byrequests
+       </Proxy>
+
+       ProxyPass / balancer://my_load_balancer
+
+</VirtualHost>
