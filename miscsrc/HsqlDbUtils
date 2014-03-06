@@ -1,0 +1,20 @@
+ public class HsqlDbUtils {
+ 
+   public static void clear(final EntityManager entityManager) {
+  
+          logger.info("Cleaning Test HSQL Database");
+  
+          EntityTransaction tx = entityManager.getTransaction();
+  
+          try {
+              tx.begin();
+              entityManager.createNativeQuery("TRUNCATE SCHEMA PUBLIC AND COMMIT ").executeUpdate();
+              tx.commit();
+          } catch (Exception e) {
+              CommonUtil.stackToString(e);
+          }
+  
+          logger.info("Done Cleaning Test HSQL Database");
+  
+      }
+}
