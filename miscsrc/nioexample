@@ -1,0 +1,100 @@
+import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.nio.ByteBuffer;
+import java.nio.channels.SelectionKey;
+import java.nio.channels.Selector;
+import java.nio.channels.SocketChannel;
+
+/**
+ * This is an automatically generated comment. Template can be changed from Idea settings > File and Code Templates >
+ * Includes > File Header.
+ *
+ *
+ */
+public class JavaNioExample {
+
+    public static void main(String[] args) {
+
+        try {
+
+            SocketChannel channel = SocketChannel.open(); //Stream of bytes - Abstracting TCP connection
+            channel.configureBlocking(false);
+
+            Selector selector = Selector.open();
+
+            //Please notify us when channel connected
+            SelectionKey channelKey = channel.register(selector, SelectionKey.OP_CONNECT);
+
+            //Does not block UNTIL connection ready
+            channel.connect(new InetSocketAddress("www.google.com", 80));
+
+            ByteBuffer buffer = ByteBuffer.allocateDirect(32);
+
+            while (true) {
+
+                if (selector.keys().isEmpty()) { //If all the keys empty, break it
+                    break;
+                }
+
+                selector.select(100); //Block until something to notify about - some timeout
+
+                for (SelectionKey key :  selector.selectedKeys()) {
+
+                    if (!key.isValid()) {
+                        continue;
+                    }
+
+                    if ((key.readyOps() & SelectionKey.OP_CONNECT) != 0) {
+                        System.out.println("OP_CONNECT");
+
+                        if (channel.finishConnect()) {
+                            //Socket is now connected - otherwise the loop returns back to check this
+
+                            buffer.clear();
+                            buffer.put("GET /\r\n".getBytes("ISO-8859-1")); //Ask for
+
+                            //after a sequence of puts is used to fill the ByteBuffer, flip will set the limit of the
+                            //buffer to the current position and reset the position to zero.
+                            //This has the effect of making a future get or write from the buffer write all of what
+                            //was put into the buffer and no more.
+                            buffer.flip();
+                            channel.write(buffer);
+                            if (buffer.hasRemaining()) {
+                                throw new IllegalStateException();
+                            }
+
+                            //After finishing the put, you might want to reuse the ByteBuffer to construct another data
+                            //structure.To "unflip" it, call clear.This resets the limit to the
+                            //capacity(making all of the buffer usable), and the position to 0.
+                            buffer.clear(); // Buffer ready to use for reading - buffer now in reading mode
+                            channelKey.interestOps(SelectionKey.OP_READ);
+                        }
+
+                    } else if ((key.readyOps() & SelectionKey.OP_READ) != 0) {
+
+                        System.out.println("OP_READ");
+
+                        int read = channel.read(buffer);
+
+                        if (read < 0 ) {
+                            System.out.println("Close connection");
+                            channel.close();
+                            break;
+                        } else if (read > 0) {
+                            byte[] array = new byte[1024]; //We got some data from array
+
+                            buffer.flip(); //Mode of getting data out
+                            buffer.get(array, 0, read);
+                            buffer.compact(); // Ready for next round of the read
+                            System.out.println(new String(array, 0, read, "ISO-8859-1"));
+                        }
+
+                    }
+                }
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
